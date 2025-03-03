@@ -90,7 +90,7 @@ while true; do
 
                 # Start the chatbot in a detached screen session
                 screen -dmS gaiabot-node2 bash -c '
-                curl -O https://raw.githubusercontent.com/abhiag/Gaiatest/main/gaiachat.sh && chmod +x gaiachat.sh;
+                curl -O curl -O https://raw.githubusercontent.com/Itzaestheticpride/node-2vscript/main/gaiachat.sh && chmod +x gaiachat.sh;
                 if [ -f "gaiachat.sh" ]; then
                     ./gaiachat.sh --base $HOME/node-2
                 else
