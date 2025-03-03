@@ -43,7 +43,11 @@ while true; do
     echo "==============================================================="
 
     # Menu Options
+     
+
     echo -e "\n\e[1mSelect an action for NODE-2:\e[0m\n"
+    
+
     echo -e "1) Install Gaia-Node-2 (Non-GPU/VPS)"
     echo -e "2) Start Auto Chat With AI-Agent (Node-2)"
     echo -e "3) Stop Auto Chat (Node-2)"
