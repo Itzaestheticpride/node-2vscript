@@ -39,73 +39,65 @@ fi
 while true; do
     clear
     echo "==============================================================="
-    echo -e "\e[1;36m🚀🚀 GAIANET NODE-2 INSTALLER Tool-Kit 🚀🚀\e[0m"
+    echo -e "\e[1;36m🚀🚀 MULTIPLE GAIANET NODE INSTALLER TOOL 🚀🚀\e[0m"
     echo "==============================================================="
 
     # Menu Options
-     
-
-    echo -e "\n\e[1mSelect an action for NODE-2:\e[0m\n"
-    
-
-    echo -e "1) Install Gaia-Node-2 (Non-GPU/VPS)"
-    echo -e "2) Start Auto Chat With AI-Agent (Node-2)"
-    echo -e "3) Stop Auto Chat (Node-2)"
-    echo -e "4) Restart GaiaNet Node-2"
-    echo -e "5) Stop GaiaNet Node-2"
-    echo -e "6) Check GaiaNet Node-2 Status (Node ID & Device ID)"
-    echo -e "7) Uninstall GaiaNet Node-2 (Danger Zone)"
-    echo -e "0) Exit Installer"
+    echo -e "\n\e[1mSelect an action:\e[0m\n"
+    echo -e "01) Install Gaia-Node (Custom Path)"
+    echo -e "1)  Install Gaia-Node-2 (Default: /home/node-2)"
+    echo -e "2)  Start Auto Chat With AI-Agent (Node-2)"
+    echo -e "3)  Stop Auto Chat (Node-2)"
+    echo -e "4)  Restart GaiaNet Node-2"
+    echo -e "5)  Stop GaiaNet Node-2"
+    echo -e "6)  Check GaiaNet Node-2 Status (Node ID & Device ID)"
+    echo -e "7)  Uninstall GaiaNet Node-2 (Danger Zone)"
+    echo -e "0)  Exit Installer"
     echo "==============================================================="
 
     read -rp "Enter your choice: " choice
 
     case $choice in
+        01)
+            # Ask for custom directory
+            read -rp "Enter the path to install GaiaNet (e.g., /home/node-3): " custom_path
+            custom_path="${custom_path:-/home/node-2}"  # Default to /home/node-2 if empty
+
+            # Check if directory exists, if not, create it
+            if [ ! -d "$custom_path" ]; then
+                echo "📁 Directory does not exist. Creating $custom_path ..."
+                mkdir -p "$custom_path"
+                echo "✅ Directory $custom_path created!"
+            else
+                echo "✅ Directory $custom_path already exists!"
+            fi
+
+            echo "🚀 Installing GaiaNet at $custom_path..."
+            curl -sSfL 'https://raw.githubusercontent.com/GaiaNet-AI/gaianet-node/main/install.sh' | bash -s -- --base "$custom_path"
+            ;;
+
         1)
-            echo "Installing Gaia-Node-2..."
-            curl -sSfL 'https://raw.githubusercontent.com/GaiaNet-AI/gaianet-node/main/install.sh' | bash -s -- --base $HOME/node-2
+            echo "Installing Gaia-Node-2 at /home/node-2..."
+            curl -sSfL 'https://raw.githubusercontent.com/GaiaNet-AI/gaianet-node/main/install.sh' | bash -s -- --base "$HOME/node-2"
             ;;
 
         2)
             echo "🔴 Terminating any existing 'gaiabot-node2' screen sessions..."
             screen -ls | awk '/[0-9]+\.gaiabot-node2/ {print $1}' | xargs -r -I{} screen -X -S {} quit
 
-            # Function to check if port 8086 is active
-            check_port() {
-                if sudo lsof -i :8086 > /dev/null 2>&1; then
-                    echo -e "\e[1;32m✅ Port 8086 is active. GaiaNet Node-2 is running.\e[0m"
-                    return 0
-                else
-                    return 1
-                fi
-            }
+            echo "✅ Starting Auto Chat for Node-2..."
+            screen -dmS gaiabot-node2 bash -c '
+            curl -O https://raw.githubusercontent.com/Itzaestheticpride/node-2vscript/main/gaiachat.sh && chmod +x gaiachat.sh;
+            if [ -f "gaiachat.sh" ]; then
+                ./gaiachat.sh --base $HOME/node-2
+            else
+                echo "❌ Error: Failed to download gaiachat.sh"
+                sleep 10
+                exit 1
+            fi'
 
-            # Check if GaiaNet Node-2 is installed properly
-            gaianet_info=$( ~/node-2/bin/gaianet info 2>/dev/null )
-            if [[ -z "$gaianet_info" ]]; then
-                echo -e "\e[1;31m❌ GaiaNet Node-2 is installed but not configured properly. Please reinstall.\e[0m"
-                read -r -p "Press Enter to return to the main menu..."
-                continue
-            fi
-
-            # Proceed if GaiaNet Node-2 is properly installed
-            if [[ "$gaianet_info" == *"Node ID"* || "$gaianet_info" == *"Device ID"* ]]; then
-                echo -e "\e[1;32m✅ GaiaNet Node-2 detected. Starting chatbot...\e[0m"
-
-                # Start the chatbot in a detached screen session
-                screen -dmS gaiabot-node2 bash -c '
-                curl -O curl -O https://raw.githubusercontent.com/Itzaestheticpride/node-2vscript/main/gaiachat.sh && chmod +x gaiachat.sh;
-                if [ -f "gaiachat.sh" ]; then
-                    ./gaiachat.sh --base $HOME/node-2
-                else
-                    echo "❌ Error: Failed to download gaiachat.sh"
-                    sleep 10
-                    exit 1
-                fi'
-
-                sleep 5
-                screen -r gaiabot-node2
-            fi
+            sleep 5
+            screen -r gaiabot-node2
             ;;
 
         3)
