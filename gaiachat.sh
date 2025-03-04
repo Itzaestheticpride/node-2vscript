@@ -1,90 +1,71 @@
 #!/bin/bash
 
-NODE_DIR="$HOME/node-2"
-API_KEY_DIR="$NODE_DIR"
+# Define API Key storage directory
+API_KEY_DIR="$HOME/.gaianet_keys"
+API_KEY_FILE="$API_KEY_DIR/apikey_node2"
+
+# Ensure the key directory exists
 mkdir -p "$API_KEY_DIR"
 
-# Function to check if NVIDIA CUDA or GPU is present
-check_cuda() {
-    if command -v nvcc &> /dev/null || command -v nvidia-smi &> /dev/null; then
-        echo "✅ NVIDIA GPU with CUDA detected."
-        return 0  
+# Function to retrieve or request API Key
+get_api_key() {
+    if [[ -f "$API_KEY_FILE" ]]; then
+        api_key=$(cat "$API_KEY_FILE")
+        echo "✅ Using saved API key."
     else
-        echo "❌ NVIDIA GPU Not Found."
-        return 1  
-    fi
-}
-
-# Function to check if the system is a VPS, Laptop, or Desktop
-check_system_type() {
-    vps_type=$(systemd-detect-virt)
-    if echo "$vps_type" | grep -qiE "kvm|qemu|vmware|xen|lxc"; then
-        echo "✅ This is a VPS."
-        return 0  
-    elif ls /sys/class/power_supply/ | grep -q "^BAT[0-9]"; then
-        echo "✅ This is a Laptop."
-        return 1  
-    else
-        echo "✅ This is a Desktop."
-        return 2  
-    fi
-}
-
-# Set API URL based on system type and CUDA presence
-set_api_url() {
-    check_system_type
-    system_type=$?
-
-    check_cuda
-    cuda_present=$?
-
-    if [ "$system_type" -eq 0 ]; then
-        API_URL="https://hyper.gaia.domains/v1/chat/completions"
-        API_NAME="Hyper"
-    elif [ "$system_type" -eq 1 ]; then
-        if [ "$cuda_present" -eq 0 ]; then
-            API_URL="https://soneium.gaia.domains/v1/chat/completions"
-            API_NAME="Soneium"
-        else
-            API_URL="https://hyper.gaia.domains/v1/chat/completions"
-            API_NAME="Hyper"
+        read -rp "Enter your API Key: " api_key
+        if [[ -z "$api_key" ]]; then
+            echo "❌ No API key provided. Exiting."
+            exit 1
         fi
-    elif [ "$system_type" -eq 2 ]; then
-        if [ "$cuda_present" -eq 0 ]; then
-            API_URL="https://gadao.gaia.domains/v1/chat/completions"
-            API_NAME="Gadao"
-        else
-            API_URL="https://hyper.gaia.domains/v1/chat/completions"
-            API_NAME="Hyper"
-        fi
+        echo "$api_key" > "$API_KEY_FILE"
+        chmod 600 "$API_KEY_FILE"
+        echo "✅ API key saved for future use."
     fi
-
-    echo "🔗 Using API: ($API_NAME)"
 }
 
-set_api_url
+# Function to get a random general question
+generate_random_question() {
+    questions=(
+        "What is the capital of France?"
+        "Who wrote 'Romeo and Juliet'?"
+        "What is the largest planet?"
+        "What is the chemical symbol for water?"
+        "Who painted the Mona Lisa?"
+    )
+    echo "${questions[$RANDOM % ${#questions[@]}]}"
+}
 
-# Check if jq is installed
-if ! command -v jq &> /dev/null; then
-    echo "❌ jq not found. Installing..."
-    sudo apt update && sudo apt install jq -y
-fi
+# Function to send API request
+send_request() {
+    local message="$1"
 
-# Load or create API Key for Node-2
-if [ -f "$API_KEY_DIR/api_key" ]; then
-    api_key=$(cat "$API_KEY_DIR/api_key")
-    echo "✅ Loaded API key for Node-2."
-else
-    echo -n "Enter your API Key for Node-2: "
-    read -r api_key
-    echo "$api_key" > "$API_KEY_DIR/api_key"
-fi
+    json_data=$(cat <<EOF
+{
+    "messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "$message"}
+    ]
+}
+EOF
+    )
 
-# Start Chatbot for Node-2
-echo "🚀 Starting Auto Chat for Node-2..."
-screen -dmS gaiabot-node2 bash -c "
-cd $NODE_DIR &&
-./gaiachat.sh --base $NODE_DIR --port 8086
-"
+    response=$(curl -s -X POST "https://hyper.gaia.domains/v1/chat/completions" \
+        -H "Authorization: Bearer $api_key" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d "$json_data")
 
-echo "✅ Gaia Auto Chat started for Node-2 on port 8086."
+    echo "💬 Question: $message"
+    echo "📝 Response: $(echo "$response" | jq -r '.choices[0].message.content' 2>/dev/null)"
+}
+
+# Get API key
+get_api_key
+
+# Start chatbot loop
+while true; do
+    random_message=$(generate_random_question)
+    send_request "$random_message"
+    sleep 5
+done
